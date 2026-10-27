@@ -58,11 +58,17 @@ let f = 0, fin_frames = 0, scan;
 // (En setup() se asigna; aquí solo se declara.)
 let $estado = null;
 
+// El texto de los créditos ya NO se define aquí: se carga desde
+// "creditos.txt" mediante loadStrings() en el preload() de sketch.js.
+// Aquí solo declaramos la variable global que lo contendrá.
+// Cada elemento de `lineas_texto` será una línea del archivo.
+let lineas_texto = [];
 
 // ============================================================
 //  setup(): p5 lo ejecuta sólo una vez al arrancar
 // ============================================================
 function setup() {
+
   pixelDensity(1);              // Fuerza escala 1:1 para evitar descuadres en pantallas de alta densidad
   const c = createCanvas(W, H);
   c.parent("lienzo");           // Inserta el canvas dentro de <div id="lienzo">
@@ -91,8 +97,8 @@ function setup() {
   textAlign(LEFT, BASELINE);
   noStroke();
 
-  // 1) Divide el texto en un array de líneas
-  lineas = TEXTO.split("\n");
+   // 1) El texto ya viene troceado en líneas desde preload()
+  lineas = lineas_texto;
 
   // 2) Calcula la posición X de cada letra y desfasa la fase del muelle
   for (let i = 0; i < lineas.length; i++) {
