@@ -1,5 +1,18 @@
 
 // ============================================================
+//  preload(): p5 lo ejecuta ANTES de setup().
+//  Se usa para cargar archivos externos (imágenes, sonidos,
+//  textos...) de forma que setup() los encuentre ya listos.
+// ============================================================
+function preload() {
+  // loadStrings() descarga el archivo y devuelve un array
+  // en el que cada elemento es una línea del texto.
+  // Si el archivo no existe o falla la descarga, p5 muestra
+  // un error en consola y `lineas_texto` queda vacío.
+  lineas_texto = loadStrings("creditos.txt");
+}
+
+// ============================================================
 //  muelle(t): Calcula el movimiento elástico
 //  Recibe el tiempo 't' y devuelve el estiramiento en píxeles (de 0 a ESTIRO).
 // ============================================================
