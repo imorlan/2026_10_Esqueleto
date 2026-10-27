@@ -16,6 +16,13 @@ body {
   gap: 14px;
 }
 
+main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
 #lienzo canvas {
   display: block;
   box-shadow: 0 0 30px rgba(51, 255, 102, 0.15);

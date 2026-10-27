@@ -128,7 +128,7 @@ function setup() {
   // 5) Asigna las acciones a los botones de la interfaz de usuario HTML
   $btnRec.onclick = iniciar_grabacion;                                  // Inicia/detiene la grabación
   document.getElementById("btnReset").onclick = reiniciar_animacion;
-  // RReinicia la animación si no se está grabando
+  // Reinicia la animación si no se está grabando
 }
 
 // ============================================================
