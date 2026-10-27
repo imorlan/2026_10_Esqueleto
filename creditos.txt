@@ -14,11 +14,7 @@ Interpretada por Dolly Parton
 
 
 
-
-
-
 FATAL  ERROR:  OUT  OF  MEMORY
-
 
 Iñaki  Morlán  Santa  Catalina
 Arte  y  Tecnología  III · G01
