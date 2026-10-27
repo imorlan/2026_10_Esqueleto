@@ -1,112 +1,224 @@
 // ============================================================
-//  GRABACIÓN Y EXPORTACIÓN DE VÍDEO (WebAPI MediaRecorder)
+//  GRABACIÓN Y EXPORTACIÓN DE VÍDEO (Web API MediaRecorder)
 // ============================================================
-// Este bloque convierte las imágenes creados en la pantalla (canvas)
-// en un archivo de vídeo que el usuario puede guardar en su ordenador.
-// Funciona en tres pasos:
-//  1. Elige el formato que mejor entienda el navegador (MP4 o WebM).
-//  2. Captura el canvas 25 veces por segundo y guarda los datos.
-//  3. Une todas las partes y fuerza una descarga automática.
+// Convierte el canvas de p5.js en un archivo de vídeo descargable.
+//
+// Flujo general:
+//   1. elegir_mime()       → pregunta al navegador qué formato soporta.
+//   2. iniciar_grabacion() → captura el canvas y empieza a grabar.
+//   3. detener_grabacion() → para, une los trozos y descarga.
+//
+// Requisitos externos (definidos en otros archivos):
+//   - FPS        → número de fotogramas por segundo (constantes.js).
+//   - f          → contador global de fotogramas (sketch.js).
+//   - $estado    → <span id="estado"> donde se informa al usuario (sketch.js).
+//   - #lienzo canvas → el canvas que crea p5.js dentro de <div id="lienzo">.
+//
+// Ids del HTML que este archivo espera encontrar:
+//   - btn_rec    → botón "● Grabar".
+//   - btn_stop   → botón "■ Parar".
 // ============================================================
+
+
+// ------------------------------------------------------------
+//  VARIABLES GLOBALES DEL MÓDULO DE GRABACIÓN
+// ------------------------------------------------------------
+// Se declaran con `let` (no `const`) porque cambian durante la
+// grabación. Son globales para que sketch.js pueda consultarlas
+// (por ejemplo, `grabando` para saber si reiniciar la animación).
+// ------------------------------------------------------------
+
+let recorder     = null;  // Instancia activa de MediaRecorder (null si no se graba)
+let trozos       = [];    // Fragmentos de vídeo acumulados en cada ondataavailable
+let mime_elegido = "";    // MIME type elegido al iniciar (p. ej. "video/mp4" o "video/webm")
+let grabando     = false; // Bandera de estado: true mientras dura la grabación
+
+
+// ------------------------------------------------------------
+//  SELECCIÓN DEL FORMATO DE VÍDEO
+// ------------------------------------------------------------
 
 /**
- * Selecciona el formato de vídeo (MIME type) con mejor compatibilidad soportado por el navegador.
- * ¿Por qué es necesario? 
- * No todos los navegadores (Chrome, Firefox, Safari) saben grabar el mismo tipo de vídeo.
- * Por eso probamos una lista ordenada de mejor a peor: primero intentamos MP4 (el estándar más
- * compatible en móviles y reproductores) y, si el navegador no sabe crearlo, usamos WebM.
- * 
- * Devuelve el formato de vídeo soportado (string) o "" (cadena vacía) si no hay ninguno.
+ * Devuelve el MIME type de vídeo con mejor compatibilidad que
+ * el navegador actual sepa grabar, o "" si no soporta ninguno.
+ *
+ * Estrategia: probar una lista ordenada de "mejor a peor" y
+ * quedarse con la primera que MediaRecorder.isTypeSupported()
+ * confirme. El orden prioriza MP4 (más compatible en móviles
+ * y reproductores) y cae a WebM si el navegador no sabe MP4.
+ *
+ * @returns {string} MIME type soportado, o "" si ninguno lo es.
  */
 function elegir_mime() {
+  // Lista de candidatos, del más deseable al más básico.
   const candidatos = [
-    "video/mp4;codecs=avc1.640028",   // MP4 con códec H.264 (Calidad alta: funciona en casi cualquier sitio)
-    "video/mp4;codecs=avc1.42E01E",   // MP4 con códec H.264 (Compatibilidad amplia para dispositivos antiguos)
-    "video/mp4;codecs=avc1",          // MP4 genérico
-    "video/mp4",                      // Formato MP4 básico
-    "video/webm;codecs=vp9",          // WebM con códec VP9 (Compresión moderna, ideal para web)
-    "video/webm;codecs=vp8",          // WebM con códec VP8 (Formato WebM estándar)
-    "video/webm"                      // Formato WebM básico
+    "video/mp4;codecs=avc1.640028",   // MP4 + H.264 perfil alto (mejor calidad)
+    "video/mp4;codecs=avc1.42E01E",   // MP4 + H.264 perfil baseline (más compatible)
+    "video/mp4;codecs=avc1",          // MP4 + H.264 genérico
+    "video/mp4",                      // MP4 sin especificar códec
+    "video/webm;codecs=vp9",          // WebM + VP9 (buena compresión)
+    "video/webm;codecs=vp8",          // WebM + VP8 (estándar)
+    "video/webm"                      // WebM básico
   ];
 
-  // MediaRecorder.isTypeSupported() le pregunta al navegador: "¿Sabes grabar en este formato?"
-  // .find() recorre la lista y se queda con la primera opción que el navegador responda que SÍ.
+  // .find() recorre la lista y devuelve el primer elemento para
+  // el que la función devuelva true. MediaRecorder.isTypeSupported()
+  // es la pregunta al navegador: "¿sabes grabar en este formato?".
+  // Si ninguno responde true, devolvemos "" (cadena vacía).
   return candidatos.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
 }
 
+
+// ------------------------------------------------------------
+//  INICIO DE LA GRABACIÓN
+// ------------------------------------------------------------
+
 /**
- * Prepara e inicia el proceso de captura de vídeo desde el canvas de p5.js.
- *  * ¿Cómo funciona la captura?
- * - captureStream(FPS): Toma fotogramas en vivo del canvas al ritmo fijado por FPS (25 imágenes/segundo).
- * - MediaRecorder: Es la cámara virtual que empaqueta esas imágenes en un archivo de vídeo.
+ * Inicia la captura de vídeo del canvas y arranca el MediaRecorder.
+ *
+ * Pasos:
+ *   1. Comprobar que no haya ya una grabación en curso.
+ *   2. Localizar el canvas de p5.js dentro de #lienzo.
+ *   3. Crear un MediaStream a partir del canvas a FPS.
+ *   4. Elegir MIME type y configurar el MediaRecorder.
+ *   5. Enganchar ondataavailable (acumular trozos) y onstop (descargar).
+ *   6. Resetear el contador de fotogramas y arrancar.
  */
 function iniciar_grabacion() {
-  if (grabando) return;      // Si ya hay una grabación en marcha, interrumpe la función para evitar 
-                             // grabar dos veces al mismo tiempo
+  // Salvaguarda: si ya estamos grabando, no hacemos nada.
+  // Evita dobles clics y grabaciones solapadas.
+  if (grabando) return;
 
-  // Conecta la cámara virtual específicamente con el canvas del proyecto ("#lienzo canvas")
-  const stream = document.querySelector("#lienzo canvas").captureStream(FPS);
+  // Localizamos el canvas que p5.js ha insertado dentro de #lienzo.
+  // Si no existe (por ejemplo, porque parent('lienzo') falló),
+  // avisamos por consola y abortamos para no romper el sketch.
+  const canvas = document.querySelector("#lienzo canvas");
+  if (!canvas) {
+    console.error("No se encontró #lienzo canvas");
+    return;
+  }
 
+  // captureStream(FPS) crea un flujo de vídeo en vivo a partir del
+  // canvas. FPS debe ser una constante global (p. ej. 25 o 30).
+  // A mayor FPS, más fluidez pero archivo más grande.
+  const stream = canvas.captureStream(FPS);
+
+  // Decidimos el formato una sola vez por grabación.
   mime_elegido = elegir_mime();
 
-  // Configura la grabadora con el formato elegido y una tasa de bits (bitrate) de 8 Mbps (8.000.000 bps).
-  // La tasa de bits determina la calidad: 8 Mbps garantiza que el vídeo no pierda nitidez ni se vea pixelado.
-  recorder = new MediaRecorder(stream, mime_elegido 
+  // Creamos el MediaRecorder con el formato elegido y 8 Mbps de bitrate.
+  // Si no hay MIME soportado (""), pasamos solo el bitrate y dejamos
+  // que el navegador elija su formato por defecto.
+  recorder = new MediaRecorder(stream, mime_elegido
     ? { mimeType: mime_elegido, videoBitsPerSecond: 8000000 }
     : { videoBitsPerSecond: 8000000 });
 
-  trozos = []; // Vector (array) temporal donde se van guardando los fragmentos de vídeo a medida que se procesan
+  // Vaciamos el array de trozos para empezar una grabación limpia.
+  trozos = [];
 
-  // Evento que se ejecuta periódicamente mientras se graba:
-  // Conforme la grabadora genera pequeños paquetes de vídeo ("chunks"), los guardamos en el vector 'trozos'.
-  recorder.ondataavailable = e => { 
-    if (e.data.size > 0) trozos.push(e.data); 
+  // Evento que se dispara periódicamente mientras se graba:
+  // el MediaRecorder entrega fragmentos (chunks) de vídeo y los
+  // acumulamos en `trozos`. Solo guardamos si tienen datos.
+  recorder.ondataavailable = e => {
+    if (e.data.size > 0) trozos.push(e.data);
   };
 
-  // Evento que se ejecuta cuando la grabación se detiene (al llamar a recorder.stop()):
-  // Junta todos los pedazos de vídeo, crea un archivo final en memoria e inicia la descarga en la carpeta del usuario.
+  // Evento que se dispara al llamar a recorder.stop():
+  // unimos todos los trozos en un Blob, decidimos la extensión
+  // según el MIME elegido y forzamos la descarga con un <a> invisible.
   recorder.onstop = () => {
-    const ext = mime_elegido.includes("mp4") ? "mp4" : "webm";
-    
-    // Un Blob (Binary Large Object) es una estructura que junta todos los trozos en un único "bloque" de datos
+    // Si el MIME contiene "mp4", el archivo será .mp4; si no, .webm.
+    const ext  = mime_elegido.includes("mp4") ? "mp4" : "webm";
+
+    // Blob = Binary Large Object. Une los trozos en un único
+    // bloque binario con el tipo MIME correcto.
     const blob = new Blob(trozos, { type: mime_elegido || "video/webm" });
 
-    // Truco de descarga automática: simulación del clic de descarga
-    // Crea un enlace invisible apuntando al vídeo generado en memoria (ObjectURL)
-    // y simula un clic (.click()) para que la descarga comience sin intervención del usuario.
+    // Truco de descarga automática:
+    //   - Creamos un <a> no insertado en el DOM.
+    //   - Le damos un ObjectURL que apunta al Blob en memoria.
+    //   - Le ponemos el nombre de archivo deseado en `download`.
+    //   - Simulamos un clic para que el navegador descargue.
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "creditos_terminal." + ext; // Nombre predeterminado del archivo que recibirá el usuario
+    a.download = "creditos_terminal." + ext;
     a.click();
 
-    // Reestablece los botones y avisa al usuario en pantalla de lo que ha sucedido
-    $btnRec.disabled = false;
-    $estado.textContent = ext === "mp4"
-      ? "✔ Descargado creditos_terminal.mp4"
-      : "Se descargó .webm (tu navegador no graba MP4). Conviértelo con HandBrake o ffmpeg.";
+    // Restauramos el estado de los botones (Parar → desactivado,
+    // Grabar → activo) y avisamos al usuario del resultado.
+    actualizar_botones();
+    if ($estado) {
+      $estado.textContent = ext === "mp4"
+        ? "✔ Descargado creditos_terminal.mp4"
+        : "✔ Descargado .webm (conviértelo con HandBrake o ffmpeg)";
+    }
   };
 
-  f = 0;                  // Resetea el contador de fotogramas a 0 para que la animación empiece desde el inicio exacto
-  recorder.start();       // Pone a funcionar la grabadora
+  // Reseteamos el contador de fotogramas para que la animación
+  // empiece desde el principio exacto al iniciar la grabación.
+  f = 0;
+
+  // Arrancamos el MediaRecorder y actualizamos estado y botones.
+  recorder.start();
   grabando = true;
-  $btnRec.disabled = true; // Desactiva el botón de grabar durante la captura para evitar interferencias
+  actualizar_botones();
+  if ($estado) $estado.textContent = "● Grabando…";
 }
 
+
+// ------------------------------------------------------------
+//  PARADA DE LA GRABACIÓN
+// ------------------------------------------------------------
+
 /**
- * Detiene la grabación actual y activa la descarga del vídeo final.
+ * Detiene la grabación en curso y dispara la descarga.
+ *
+ * Al llamar a recorder.stop(), el navegador emite el evento
+ * `onstop` definido en iniciar_grabacion(), que se encarga de
+ * unir los trozos, crear el Blob y descargar el archivo.
  */
 function detener_grabacion() {
+  // Solo actuamos si hay un recorder activo y estamos grabando.
+  // Así evitamos dobles paradas o paradas sin grabación.
   if (recorder && grabando) {
-    grabando = false;
-    recorder.stop();      // Ordena a la grabadora parar, lo que desencadena la función 'recorder.onstop' definida arriba
-    $estado.textContent = "■ Terminado. Descargando…";
+    grabando = false;       // marcamos como no grabando ANTES de parar
+    recorder.stop();        // dispara recorder.onstop (descarga)
+    if ($estado) $estado.textContent = "■ Terminado. Descargando…";
   }
 }
 
-// ============================================================
-// Reinicia la animación desde el principio, pero sólo si no se está grabando, 
-// para no estropear el vídeo
-// ============================================================
+
+// ------------------------------------------------------------
+//  SINCRONIZACIÓN DE BOTONES
+// ------------------------------------------------------------
+
+/**
+ * Sincroniza el estado visual de los botones con `grabando`.
+ *
+ *   - Mientras graba:  btn_rec  desactivado, btn_stop activo.
+ *   - En reposo:       btn_rec  activo,      btn_stop desactivado.
+ *
+ * Usa getElementById cada vez para no depender de variables
+ * globales que podrían no estar inicializadas al cargar el script.
+ */
+function actualizar_botones() {
+  const btn_rec  = document.getElementById("btn_rec");   // Botón ● Grabar
+  const btn_stop = document.getElementById("btn_stop");  // Botón ■ Parar
+  if (btn_rec)  btn_rec.disabled  = grabando;
+  if (btn_stop) btn_stop.disabled = !grabando;
+}
+
+
+// ------------------------------------------------------------
+//  REINICIO DE LA ANIMACIÓN
+// ------------------------------------------------------------
+
+/**
+ * Reinicia la animación desde el principio (f = 0), pero solo
+ * si no hay una grabación en curso. Así se evita cortar el vídeo
+ * a mitad de captura y se garantiza que el archivo descargado
+ * contiene la animación completa.
+ */
 function reiniciar_animacion() {
   if (!grabando) f = 0;
 }

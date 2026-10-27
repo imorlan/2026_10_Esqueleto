@@ -45,90 +45,76 @@ let lineas = [], pos_x = [], fase = [];
    // fase: fase[i] = desfase propio de la línea i, para que no se muevan todas a la vez
 
 let f = 0, fin_frames = 0, scan;
-   // f: contador de fotogramas propio (no frameCount): 
-   //    permite reiniciar y reproducir igual
+   // f: contador de fotogramas propio (no frameCount): permite reiniciar y reproducir igual
    // fin_frames: nº de fotogramas que dura una pasada completa
    // scan: capa gráfica con las líneas de barrido (scanlines), creada una sola vez
 
-let grabando = false, recorder = null, trozos = [], mime_elegido  = "";
-   // grabando: indica si la grabación está activa en este momento
-   // recorder: objeto MediaRecorder del navegador
-   // trozos: bloques de vídeo que va generando el navegador
-   // mime_elegido : formato elegido (mp4 si el navegador puede, si no webm)
+// ⚠️ NO declares aquí grabando, recorder, trozos ni mime_elegido:
+//    ya están declaradas en grabar.js. Si las repites, el navegador
+//    lanza "Identifier 'grabando' has already been declared" y
+//    la página no carga.
 
-
-
-// Guardo en constantes los elementos #estado y #btnRec del HTML para manipularlos 
-//     cómodamente desde JS sin buscarlos una y otra vez.
-// Elementos de la interfaz para cambiar el texto o estado desde el código.
-// El '$' delante del nombre es solo una convención para indicar que es un elemento HTML.
-const $estado = document.getElementById("estado");
-const $btnRec = document.getElementById("btnRec");
-
-
+// Referencia global al span de estado, para poder usarla desde draw().
+// (En setup() se asigna; aquí solo se declara.)
+let $estado = null;
 
 
 // ============================================================
 //  setup(): p5 lo ejecuta sólo una vez al arrancar
 // ============================================================
 function setup() {
-  pixelDensity(1);              // Fuerza escala 1:1 para evitar descuadres de tamaño en pantallas de 
-                                // alta densidad.
+  pixelDensity(1);              // Fuerza escala 1:1 para evitar descuadres en pantallas de alta densidad
   const c = createCanvas(W, H);
-  c.parent("lienzo");           // Inserta el canvas dentro de <div id="lienzo"> en lugar del final 
-                                // de la página
-  frameRate(FPS);               // p5.js llamar a draw() 25 veces por segundo. 
-                                // Configura la animación a 25 FPS
-  randomSeed(7);                // Fija la semilla random para que el resultado sea siempre idéntico,
-                                // es decir, que el resultado sea repetible
+  c.parent("lienzo");           // Inserta el canvas dentro de <div id="lienzo">
+  frameRate(FPS);               // p5.js llamará a draw() 25 veces por segundo
+  randomSeed(7);                // Semilla fija: el resultado es siempre idéntico y repetible
 
+  /**
+   * Enganchar los tres botones (protegido por si alguno no existe).
+   * Los ids del HTML son btn_rec, btn_stop, btn_reset y estado.
+   * El '$' delante del nombre es solo convención para indicar que es un elemento HTML.
+   */
+  const $btn_rec   = document.getElementById("btn_rec");
+  const $btn_stop  = document.getElementById("btn_stop");
+  const $btn_reset = document.getElementById("btn_reset");
+  $estado          = document.getElementById("estado");   // ⚠️ sin const: es la global de arriba
 
-  // Tipografía: "monospace" usa la fuente monoespaciada por defecto del sistema
-    textFont("monospace");        // textFont("'Courier New', Courier, monospace");
+  if ($btn_rec)   $btn_rec.onclick   = iniciar_grabacion;
+  if ($btn_stop)  $btn_stop.onclick  = detener_grabacion;
+  if ($btn_reset) $btn_reset.onclick = reiniciar_animacion;
+
+  if ($estado) $estado.textContent = "Listo";
+
+  // Tipografía
+  textFont("monospace");
   textSize(TAM);
-  textAlign(LEFT, BASELINE);    // El punto (x, y) de cada letra es su esquina inferior izquierda
-  noStroke();                   // Dibuja el texto solo con relleno (fill), sin borde (sin stroke)
-
+  textAlign(LEFT, BASELINE);
+  noStroke();
 
   // 1) Divide el texto en un array de líneas
   lineas = TEXTO.split("\n");
 
-  // 2) Para cada línea, calcula a posición X de cada letra y desfasa la fase del muelle
+  // 2) Calcula la posición X de cada letra y desfasa la fase del muelle
   for (let i = 0; i < lineas.length; i++) {
-    let acum = 0, pos = [];                 // acum: ancho acumulado hasta la letra actual
-    for (const ch of lineas[i]) {           // Recorre la línea letra a letra
-      pos.push(acum);                       // Guarda el origen X para la letra actual
-      acum += textWidth(ch);                // Suma el ancho de la letra para la siguiente iteración
+    let acum = 0, pos = [];
+    for (const ch of lineas[i]) {
+      pos.push(acum);
+      acum += textWidth(ch);
     }
     pos_x.push(pos);
-
-
-    // Desfase progresivo por línea (i * 0.7) con variación aleatoria (±0.3) para romper la simetría
     fase[i] = i * 0.7 + random(-0.3, 0.3);
   }
 
-
-  // 3) Crea la textura de scanlines (filtro CRT) en un buffer secundario para optimizar el
-  //    rendimiento: rayas horizontales oscuras semitransparentes que imitan un monitor CRT.
-  //    Se dibujan una vez en una capa aparte (createGraphics) y luego solo se pegan en cada
-  //    fotograma: es más rápido que redibujarlas siempre.
+  // 3) Textura de scanlines en un buffer secundario
   scan = createGraphics(W, H);
   scan.pixelDensity(1);
   scan.noStroke();
-  scan.fill(0, 55);                                       // negro semitransparente ~21.5% (55 de 255)
-  for (let y = 0; y < H; y += 3) scan.rect(0, y, W, 1);   // Dibuja una línea horizontal de 1 px cada 3 px
+  scan.fill(0, 55);
+  for (let y = 0; y < H; y += 3) scan.rect(0, y, W, 1);
 
-  // 4) Calcula la duración de la animación en fotogramas hasta que el texto sale totalmente de pantalla,
-  //    es decir, calcula el fotograma final en función de la última línea y la velocidad de scroll
-  //    La primera línea empieza en Y = H + 30; la última en H + 30 + (n-1) * INTERLINEA.
-  //    Añadimos 40 px de margen de salida y dividimos por la velocidad para obtener los fotogramas totales.
-  const y_ultima0 = H + 30 + (lineas.length - 1) * INTERLINEA; // Posición Y inicial de la última línea
-  fin_frames = Math.ceil((y_ultima0 + 40) / VELOCIDAD);        // Calcula la distancia a recorrer en frames
-
-  // 5) Asigna las acciones a los botones de la interfaz de usuario HTML
-  $btnRec.onclick = iniciar_grabacion;                                  // Inicia/detiene la grabación
-  document.getElementById("btnReset").onclick = reiniciar_animacion;
-  // Reinicia la animación si no se está grabando
+  // 4) Duración de la animación en fotogramas
+  const y_ultima0 = H + 30 + (lineas.length - 1) * INTERLINEA;
+  fin_frames = VELOCIDAD > 0 ? Math.ceil((y_ultima0 + 40) / VELOCIDAD) : 1;
 }
 
 // ============================================================
@@ -150,11 +136,11 @@ function draw() {
   // y decrementa su valor según VELOCIDAD para generar el scroll ascendente
   const scroll_y = H + 30 - f * VELOCIDAD;
 
-  // Simula el parpadeo de la pantalla (0.88 a 1.0) combinando dos ondas seno basadas en el contador de 
+  // Simula el parpadeo de la pantalla (0.88 a 1.0) combinando dos ondas seno basadas en el contador de
   // fotogramas propio 'f' (sin usar azar) para que el resultado sea siempre idéntico
   const parpadeo = 0.94 + 0.06 * sin(f * 0.9) * sin(f * 0.23);
 
-  // Configura el efecto de resplandor o brillo ("glow") aplicando una sombra difusa de color 
+  // Configura el efecto de resplandor o brillo ("glow") aplicando una sombra difusa de color
   // verde alrededor de las letras
   ctx.shadowColor = "rgba(51,255,102,0.85)";
   ctx.shadowBlur = 8;
@@ -167,7 +153,7 @@ function draw() {
     if (y < -TAM || y > H + TAM) continue;
 
     const linea = lineas[i];
-    if (linea.trim() === "") continue;                // Salta las líneas en blanco sin dibujar nada 
+    if (linea.trim() === "") continue;                // Salta las líneas en blanco sin dibujar nada
                                                       // pero conservando su espacio (el "aire")
 
     // Transición suave (fade in/out): calcula el degradado del texto al entrar por abajo o salir por arriba.
@@ -179,18 +165,16 @@ function draw() {
     // Color verde combinando la transparencia del borde con el parpadeo
     fill(COLOR_VERDE[0], COLOR_VERDE[1], COLOR_VERDE[2], 255 * borde * parpadeo);
 
-
-
     // Dibuja la línea letra a letra (j = índice de la letra)
     let j = 0;
     for (const ch of linea) {
-      if (ch !== " ") {                               // Ignora espacios visibles (ya tienen su 
+      if (ch !== " ") {                               // Ignora espacios visibles (ya tienen su
                                                       // hueco reservado en pos_x)
-        
-        const k = muelle(t - j * RETARDO + fase[i]);  // Estiramiento de la letra. Combina el tiempo, 
+
+        const k = muelle(t - j * RETARDO + fase[i]);  // Estiramiento de la letra. Combina el tiempo,
                                                       // un retardo por letra y el desfase de la línea
 
-        // Estira la posición X según el factor de deformación 'k': cuanto más a la derecha está la letra, 
+        // Estira la posición X según el factor de deformación 'k': cuanto más a la derecha está la letra,
         // más se desplaza (efecto muelle anclado a la izquierda)
         text(ch, MARGEN_IZQ + pos_x[i][j] * (1 + k), y);
       }
@@ -201,12 +185,12 @@ function draw() {
   ctx.shadowBlur = 0;           // Apaga el brillo para no distorsionar las scanlines (o líneas de barrido)
   image(scan, 0, 0);            // Superpone la capa de scanlines sobre el texto
 
-
-  // Mientras se graba muestra el progreso de el tiempo transcurrido / total.
-  if (grabando) {
+  // Mientras se graba muestra el progreso del tiempo transcurrido / total.
+  // La condición `&& $estado` protege contra el caso de que el span no exista
+  // (id mal escrito, HTML sin #estado, etc.) y evita un TypeError dentro de draw().
+  if (grabando && $estado) {
     $estado.textContent = "● Grabando… " + Math.round(f / FPS) + " / " + Math.round(fin_frames / FPS) + " s";
   }
-
 
   // Control del ciclo de animación y fin de grabación
   if (f >= fin_frames) {
@@ -216,5 +200,4 @@ function draw() {
     f++;                                 // siguiente fotograma
   }
 }
-
 
