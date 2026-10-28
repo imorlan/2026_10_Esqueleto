@@ -123,6 +123,12 @@ button:disabled {
   background: var(--verde-hover);
 }
 
+/* Botón On/Off: cuando está activo se ve relleno */
+#btn_reset.activo {
+  background: var(--verde-hover);
+  box-shadow: 0 0 10px rgba(51, 255, 102, 0.35);
+}
+
 /* Botón de grabar (ámbar) */
 #btn_rec {
   color: var(--ambar);

@@ -32,6 +32,7 @@ let recorder     = null;  // Instancia activa de MediaRecorder (null si no se gr
 let trozos       = [];    // Fragmentos de vídeo acumulados en cada ondataavailable
 let mime_elegido = "";    // MIME type elegido al iniciar (p. ej. "video/mp4" o "video/webm")
 let grabando     = false; // Bandera de estado: true mientras dura la grabación
+let activo       = false; // true = el scroll está en marcha
 
 
 // ------------------------------------------------------------
@@ -156,6 +157,7 @@ function iniciar_grabacion() {
 
   // Reseteamos el contador de fotogramas para que la animación
   // empiece desde el principio exacto al iniciar la grabación.
+  activo = true;   // la grabación enciende la animación
   f = 0;
 
   // Arrancamos el MediaRecorder y actualizamos estado y botones.
@@ -182,6 +184,8 @@ function detener_grabacion() {
   // Así evitamos dobles paradas o paradas sin grabación.
   if (recorder && grabando) {
     grabando = false;       // marcamos como no grabando ANTES de parar
+    activo = false;         // apaga la animación al terminar la grabación
+    f = 0;                  // vuelve al principio para la próxima vez
     recorder.stop();        // dispara recorder.onstop (descarga)
     if ($estado) $estado.textContent = "■ Terminado. Descargando…";
   }
@@ -193,32 +197,46 @@ function detener_grabacion() {
 // ------------------------------------------------------------
 
 /**
- * Sincroniza el estado visual de los botones con `grabando`.
- *
- *   - Mientras graba:  btn_rec  desactivado, btn_stop activo.
- *   - En reposo:       btn_rec  activo,      btn_stop desactivado.
- *
- * Usa getElementById cada vez para no depender de variables
- * globales que podrían no estar inicializadas al cargar el script.
+ * Sincroniza los botones con `grabando`:
+ *   - Grabando: "btn_rec" desactivado, "btn_stop" activo.
+ *   - En reposo: "btn_rec" activo, "btn_stop" desactivado.
+ * Al final refresca también el botón On/Off.
  */
 function actualizar_botones() {
-  const btn_rec  = document.getElementById("btn_rec");   // Botón ● Grabar
-  const btn_stop = document.getElementById("btn_stop");  // Botón ■ Parar
+  const btn_rec  = document.getElementById("btn_rec");
+  const btn_stop = document.getElementById("btn_stop");
   if (btn_rec)  btn_rec.disabled  = grabando;
   if (btn_stop) btn_stop.disabled = !grabando;
+  actualizar_boton_onoff();
 }
 
 
+
 // ------------------------------------------------------------
-//  REINICIO DE LA ANIMACIÓN
+//  INTERRUPTOR ON/OFF DE LA ANIMACIÓN
 // ------------------------------------------------------------
 
 /**
- * Reinicia la animación desde el principio (f = 0), pero solo
- * si no hay una grabación en curso. Así se evita cortar el vídeo
- * a mitad de captura y se garantiza que el archivo descargado
- * contiene la animación completa.
+ * Interruptor On/Off de la animación.
+ * Invierte `activo`; al apagar, reinicia `f` a 0. No actúa mientras se graba.
  */
-function reiniciar_animacion() {
-  if (!grabando) f = 0;
+function alternar_animacion() {
+  // No se permite apagar mientras se graba (cortaría el vídeo)
+  if (grabando) return;
+
+  activo = !activo;
+  if (!activo) f = 0;          // Al apagar, vuelve al principio (fondo negro)
+  actualizar_boton_onoff();
+}
+
+/**
+ * Sincroniza el botón "btn_reset" con `activo`: texto, clase "activo"
+ * y bloqueo mientras se graba.
+ */
+function actualizar_boton_onoff() {
+  const btn = document.getElementById("btn_reset");
+  if (!btn) return;
+  btn.textContent = activo ? "■ Off" : "▶ On";
+  btn.classList.toggle("activo", activo);
+  btn.disabled = grabando;     // bloqueado mientras se graba
 }

@@ -5,7 +5,7 @@ const W = 714, H = 440; // W y H: tamaño del lienzo (y del vídeo) en píxeles.
 const FPS = 25; // FPS: fotogramas por segundo
 
 
-
+/*
 // Texto de los créditos. 
    // Con comillas invertidas (``) se pueden escribir varias líneas.
    // Los espacios dobles y las líneas vacías se conservan: las líneas vacías son las
@@ -39,6 +39,7 @@ Arte  y  Tecnología  III · G01
 
 
 H264 - 25  fps - 714x440`;
+*/
 
 // ------------------------------------------------------------
 //  AJUSTES

@@ -1,3 +1,4 @@
+/*
 class Casilla {
   constructor(x, y, w, r, g, b){
     this.x   = x; // esquina superior izquierda
@@ -18,3 +19,4 @@ class Casilla {
     
   }
 }
+*/

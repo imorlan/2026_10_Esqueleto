@@ -38,11 +38,15 @@ function muelle(t) {
 // ============================================================
 //  TECLADO
 // ============================================================
-//  · Tecla 'R' / 'r': Inicia la grabación del vídeo.
-//  · Barra espaciadora (' '): Reinicia la animación desde el principio (si no se está grabando).
+//  · Tecla 'R' / 'r': Inicia la grabación del vídeo (Rec).
+//  · Tecla 'S' / 's': Detiene la grabación y descarga el vídeo (Stop).
+//  · Tecla 'O' / 'o': Enciende o apaga la animación (On/Off).
+//  · Barra espaciadora (' '): También hace On/Off.
 // Al devolver false se evita que el espacio haga scroll en la página.
 // Como los botones están fuera del lienzo, aquí no hace falta hacer clic antes en él.
 function keyPressed() {
   if (key === "r" || key === "R") iniciar_grabacion();
-  if (key === " " && !grabando) { f = 0; return false; }
+  if (key === "s" || key === "S") detener_grabacion();
+  if (key === "o" || key === "O") alternar_animacion();
+  if (key === " ") { alternar_animacion(); return false; }
 }

@@ -87,7 +87,7 @@ function setup() {
 
   if ($btn_rec)   $btn_rec.onclick   = iniciar_grabacion;
   if ($btn_stop)  $btn_stop.onclick  = detener_grabacion;
-  if ($btn_reset) $btn_reset.onclick = reiniciar_animacion;
+  if ($btn_reset) $btn_reset.onclick = alternar_animacion;
 
   if ($estado) $estado.textContent = "Listo";
 
@@ -130,6 +130,11 @@ function setup() {
 // ============================================================
 function draw() {
   background(0);                // 1) Limpia el canvas en cada fotograma, lo pone a negro (fondo del terminal)
+
+  if (!activo) {
+    image(scan, 0, 0);   // opcional: mantiene las scanlines con la pantalla "apagada"
+    return;              // no dibuja texto ni avanza f
+  }
 
   const ctx = drawingContext;   // Accede al CanvasRenderingContext2D nativo de la Web API,
                                 // necesario para aplicar propiedades de sombra/resplandor (shadowBlur)
