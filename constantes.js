@@ -1,9 +1,28 @@
 // ------------------------------------------------------------
 //  CONSTANTES BÁSICAS DEL VÍDEO
 // ------------------------------------------------------------
-const W = 714, H = 440; // W y H: tamaño del lienzo (y del vídeo) en píxeles.
-const FPS = 25; // FPS: fotogramas por segundo
+let W = 714, H = 440;
+const W_DEFECTO = 714;
+const H_DEFECTO = 440;
+const FPS = 25;
 
+// 
+//  OPCIONES DE RELACIÓN DE ASPECTO
+// 
+const opciones_aspecto = [
+  // Horizontal
+  { grupo: "Horizontal", nombre: "Super 8 Digital",          ratio: "~1.62:1", w: 714,  h: 440  },
+  { grupo: "Horizontal", nombre: "HD 4:3 (Super VGA / XGA)", ratio: "4:3",     w: 1024, h: 768  },
+  { grupo: "Horizontal", nombre: "Full HD Equivalent (4:3)", ratio: "4:3",     w: 1440, h: 1080 },
+  { grupo: "Horizontal", nombre: "Full HD 16:9",             ratio: "16:9",    w: 1920, h: 1080 },
+  { grupo: "Horizontal", nombre: "4K UHD",                   ratio: "16:9",    w: 3840, h: 2160 },
+  // Vertical
+  { grupo: "Vertical",   nombre: "Super 8 Digital",          ratio: "~1:1.62", w: 440,  h: 714  },
+  { grupo: "Vertical",   nombre: "HD 3:4 (Super VGA / XGA)", ratio: "3:4",     w: 768,  h: 1024 },
+  { grupo: "Vertical",   nombre: "Full HD Equivalent (3:4)", ratio: "3:4",     w: 1080, h: 1440 },
+  { grupo: "Vertical",   nombre: "Full HD 9:16",             ratio: "9:16",    w: 1080, h: 1920 },
+  { grupo: "Vertical",   nombre: "4K UHD",                   ratio: "9:16",    w: 2160, h: 3840 },
+];
 
 
 // ------------------------------------------------------------

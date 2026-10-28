@@ -1,43 +1,59 @@
-
 // ============================================================
-//  Títulos de crédito · Terminal CRT clásico · Efecto muelle
+//  2026_10_Esqueleto
 // ------------------------------------------------------------
 //  Autor:       Iñaki Morlán
 //  Contacto:    i.morlan@ehu.eus
 //  Licencia:    MIT License (Libre uso, modificación y distribución)
-//  
-//  Especificaciones Técnicas:
-//  · Lienzo/canvas: 714 x 440 px [*] |  Fotogramas: 25 fps
-//  · Exportación: MP4 (H.264) / WebM vía MediaRecorder API [**]
 // ============================================================
 //
 //  IDEA GENERAL DEL PROGRAMA
+//  -------------------------
+//  1. Primero se elige la relación de aspecto del vídeo.
+//  2. Después se trocea el texto: lo dividimos por líneas y luego
+//     letra por letra (un string/array).
+//  3. Renderizamos cada letra una a una en su coordenada del canvas.
+//  4. Todo el grupo de líneas va haciendo un scroll vertical suave
+//     hacia arriba.
+//  5. Añadimos un efecto muelle: la primera letra (a la izquierda)
+//     se queda casi congelada en el margen, pero según avanza hacia
+//     la derecha, las letras sufren un delay y una oscilación mucho
+//     mayor, haciendo que la línea se mueva de más a menos y parezca
+//     un chicle al estirarse.
+//  6. Look CRT clásico: verde fósforo, efecto glow, scanlines
+//     (o líneas de barrido) y un toque de parpadeo retro.
+//  7. Se graba/captura el canvas en tiempo real con MediaRecorder
+//     y se descarga el vídeo automáticamente (MP4/WebM) al finalizar.
+//
+//  CONTROLES
 //  --------------------
-//  1. Primero troceamos el texto: lo dividimos por líneas y luego letra por letra (un string/array).
-//  2. Renderizamos cada letra una a una en su coordenada del canvas.
-//  3. Todo el grupo de líneas va haciendo un scroll vertical suave hacia arriba.
-//  4. Añadimos un efecto muelle: la primera letra (a la izquierda) se queda casi congelada en el margen, 
-//     pero según avanza hacia la derecha, las letras sufren un delay y una oscilación mucho mayor, 
-//     haciendo que la línea se mueva de más a menos y parezca un chicle al estirarse.
-//  5. Look CRT clásico: verde fósforo, efecto glow, scanlines (o líneas de barrido) y un toque de 
-//     parpadeo retro.
-//  6. Se graba/captura el canvas en tiempo real con MediaRecorder y se descarga el vídeo automáticamente 
-//     (MP4/WebM) al finalizar.
+//  · Botón "● Rec"  → inicia la grabación del vídeo.
+//  · Botón "■ Stop" → detiene la grabación y descarga el archivo.
+//  · Botón "▶ On" / "■ Off" → enciende o apaga la animación.
+//  · Tecla R → Rec.
+//  · Tecla S → Stop.
+//  · Tecla O o barra espaciadora → On/Off.
 //
-//  [*]  Proporción condicionada por el formato original en película Super 8. 
-//       Para cambiar las dimensiones, basta con modificar las constantes W y H.
-//  [**] Con Chrome/Edge 126 o superior, la web creará un archivo .mp4 real directamente al descargar.
-//       Con una versión anterior (u otro navegador sin ese soporte: Firefox, Safari), la exportación a MP4 
-//       fallará o la página te obligará a descargar el vídeo en formato .webm.
+//  NOTAS
+//  --------------------
+//  [*]  Las dimensiones del canvas ya NO son fijas (antes 714 × 440,
+//       proporción Super 8). Ahora las asigna el usuario desde la
+//       pantalla de selección inicial entre las opciones de
+//       `opciones_aspecto` (constantes.js): horizontal o vertical,
+//       desde Super 8 hasta 4K UHD.
+//  [**] Con Chrome/Edge 126 o superior, la web creará un archivo .mp4
+//       real directamente al descargar. Con una versión anterior
+//       (u otro navegador sin ese soporte: Firefox, Safari), la
+//       exportación a MP4 fallará o la página te obligará a descargar
+//       el vídeo en formato .webm.
 //
-//  Nota.- El texto de los créditos desplegado (scroll) en pantalla se puede editar directamente 
-//         en la constante `TEXTO`.
+//  Nota.- El texto de los créditos desplegado (scroll) en pantalla
+//         se puede editar directamente en "creditos.txt".
 // ============================================================
 
 
 
 // ------------------------------------------------------------
-//  VARIABLES DE ESTADO 
+//  VARIABLES DE ESTADO
 // ------------------------------------------------------------
 let lineas = [], pos_x = [], fase = [];
    // lineas: lista con cada línea de texto
@@ -49,6 +65,11 @@ let f = 0, fin_frames = 0, scan;
    // fin_frames: nº de fotogramas que dura una pasada completa
    // scan: capa gráfica con las líneas de barrido (scanlines), creada una sola vez
 
+// Fase actual del programa:
+//   "seleccion"  → mostrando el selector de aspecto
+//   "ejecucion"  → canvas creado, animación disponible
+let fase_programa = "seleccion";
+
 // ⚠️ NO declares aquí grabando, recorder, trozos ni mime_elegido:
 //    ya están declaradas en grabar.js. Si las repites, el navegador
 //    lanza "Identifier 'grabando' has already been declared" y
@@ -59,48 +80,85 @@ let f = 0, fin_frames = 0, scan;
 let $estado = null;
 
 // El texto de los créditos ya NO se define aquí: se carga desde
-// "creditos.txt" mediante loadStrings() en el preload() de sketch.js.
+// "creditos.txt" mediante loadStrings() en el preload().
 // Aquí solo declaramos la variable global que lo contendrá.
 // Cada elemento de `lineas_texto` será una línea del archivo.
 let lineas_texto = [];
 
+// Canvas de p5 (se crea al elegir la relación de aspecto, no en setup).
+let canvas_principal = null;
+
+
 // ============================================================
-//  setup(): p5 lo ejecuta sólo una vez al arrancar
+//  setup(): solo prepara la pantalla de selección.
+//  NO crea el canvas definitivo ni inicializa la animación.
 // ============================================================
 function setup() {
+  pixelDensity(1);               // Fuerza escala 1:1 para evitar descuadres en pantallas de alta densidad
+  noCanvas();                    // No creamos canvas todavía
 
-  pixelDensity(1);              // Fuerza escala 1:1 para evitar descuadres en pantallas de alta densidad
-  const c = createCanvas(W, H);
-  c.parent("lienzo");           // Inserta el canvas dentro de <div id="lienzo">
+  // Referencia al span de estado
+  $estado = document.getElementById("estado");   // ⚠️ sin const: es la global de arriba
+
+  // Construir la pantalla de selección de aspecto
+  construir_selector_aspecto();
+}
+
+
+// ============================================================
+//  construir_selector_aspecto(): genera los botones HTML
+//  a partir de la constante opciones_aspecto.
+// ============================================================
+function construir_selector_aspecto() {
+  const cont_h = document.getElementById("opciones_horizontal");
+  const cont_v = document.getElementById("opciones_vertical");
+
+  // Por cada opción se crea un <button> con su descripción
+  // (nombre; ratio; ancho × alto) y se engancha a iniciar_ejecucion.
+  for (const op of opciones_aspecto) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = `${op.nombre}; ${op.ratio}; ${op.w} × ${op.h}`;
+    btn.addEventListener("click", () => iniciar_ejecucion(op.w, op.h));
+
+    if (op.grupo === "Horizontal") cont_h.appendChild(btn);
+    else                            cont_v.appendChild(btn);
+  }
+}
+
+
+// ============================================================
+//  iniciar_ejecucion(w, h): llamada al pulsar una opción.
+//  Asigna W y H, crea el canvas, inicializa la animación,
+//  engancha los botones y pasa a fase de ejecución.
+// ============================================================
+function iniciar_ejecucion(w, h) {
+  // 1) Asignar dimensiones globales
+  W = w;
+  H = h;
+
+  // 2) Ocultar el selector y mostrar la barra de controles
+  document.getElementById("selector_aspecto").classList.add("oculto");
+  document.getElementById("barra").classList.remove("oculto");
+
+  // 3) Crear el canvas con las dimensiones elegidas
+  canvas_principal = createCanvas(W, H);
+  canvas_principal.parent("lienzo");   // Inserta el canvas dentro de <div id="lienzo">
+
+  // 4) Ajustes de p5
   frameRate(FPS);               // p5.js llamará a draw() 25 veces por segundo
   randomSeed(7);                // Semilla fija: el resultado es siempre idéntico y repetible
-
-  /**
-   * Enganchar los tres botones (protegido por si alguno no existe).
-   * Los ids del HTML son btn_rec, btn_stop, btn_reset y estado.
-   * El '$' delante del nombre es solo convención para indicar que es un elemento HTML.
-   */
-  const $btn_rec   = document.getElementById("btn_rec");
-  const $btn_stop  = document.getElementById("btn_stop");
-  const $btn_reset = document.getElementById("btn_reset");
-  $estado          = document.getElementById("estado");   // ⚠️ sin const: es la global de arriba
-
-  if ($btn_rec)   $btn_rec.onclick   = iniciar_grabacion;
-  if ($btn_stop)  $btn_stop.onclick  = detener_grabacion;
-  if ($btn_reset) $btn_reset.onclick = alternar_animacion;
-
-  if ($estado) $estado.textContent = "Listo";
-
-  // Tipografía
   textFont("monospace");
   textSize(TAM);
   textAlign(LEFT, BASELINE);
   noStroke();
 
-   // 1) El texto ya viene troceado en líneas desde preload()
+  // 5) Trocear el texto y calcular posiciones X
   lineas = lineas_texto;
+  pos_x = [];
+  fase  = [];
 
-  // 2) Calcula la posición X de cada letra y desfasa la fase del muelle
+  //  Calcula la posición X de cada letra y desfasa la fase del muelle
   for (let i = 0; i < lineas.length; i++) {
     let acum = 0, pos = [];
     for (const ch of lineas[i]) {
@@ -111,17 +169,40 @@ function setup() {
     fase[i] = i * 0.7 + random(-0.3, 0.3);
   }
 
-  // 3) Textura de scanlines en un buffer secundario
+  // 6) Scanlines dependientes de W y H
+  //    (textura de scanlines en un buffer secundario)
   scan = createGraphics(W, H);
   scan.pixelDensity(1);
   scan.noStroke();
   scan.fill(0, 55);
   for (let y = 0; y < H; y += 3) scan.rect(0, y, W, 1);
 
-  // 4) Duración de la animación en fotogramas
+  // 7) Duración de la animación en fotogramas
   const y_ultima0 = H + 30 + (lineas.length - 1) * INTERLINEA;
   fin_frames = VELOCIDAD > 0 ? Math.ceil((y_ultima0 + 40) / VELOCIDAD) : 1;
+
+  // 8) Enganchar los tres botones (protegido por si alguno no existe).
+  //    Los ids del HTML son btn_rec, btn_stop, btn_reset y estado.
+  //    El '$' delante del nombre es solo convención para indicar que es
+  //    un elemento HTML.
+  const $btn_rec   = document.getElementById("btn_rec");
+  const $btn_stop  = document.getElementById("btn_stop");
+  const $btn_reset = document.getElementById("btn_reset");
+
+  if ($btn_rec)   $btn_rec.onclick   = iniciar_grabacion;
+  if ($btn_stop)  $btn_stop.onclick  = detener_grabacion;
+  if ($btn_reset) $btn_reset.onclick = alternar_animacion;
+
+  // 9) Estado inicial
+  activo = false;
+  f = 0;
+  actualizar_botones();
+  if ($estado) $estado.textContent = "Listo";
+
+  // 10) Cambiar de fase
+  fase_programa = "ejecucion";
 }
+
 
 // ============================================================
 //  draw(): Bucle principal de renderizado de p5.js.
@@ -129,6 +210,9 @@ function setup() {
 //  para calcular y dibujar un nuevo fotograma en cada iteración.
 // ============================================================
 function draw() {
+  // Mientras no se elija aspecto, no dibujamos nada del vídeo.
+  if (fase_programa !== "ejecucion") return;
+
   background(0);                // 1) Limpia el canvas en cada fotograma, lo pone a negro (fondo del terminal)
 
   if (!activo) {
@@ -147,8 +231,8 @@ function draw() {
   // y decrementa su valor según VELOCIDAD para generar el scroll ascendente
   const scroll_y = H + 30 - f * VELOCIDAD;
 
-  // Simula el parpadeo de la pantalla (0.88 a 1.0) combinando dos ondas seno basadas en el contador de
-  // fotogramas propio 'f' (sin usar azar) para que el resultado sea siempre idéntico
+  // Simula el parpadeo de la pantalla (0.88 a 1.0) combinando dos ondas seno basadas en
+  // el contador de fotogramas propio 'f' (sin usar azar) para que el resultado sea siempre idéntico
   const parpadeo = 0.94 + 0.06 * sin(f * 0.9) * sin(f * 0.23);
 
   // Configura el efecto de resplandor o brillo ("glow") aplicando una sombra difusa de color
@@ -211,4 +295,3 @@ function draw() {
     f++;                                 // siguiente fotograma
   }
 }
-

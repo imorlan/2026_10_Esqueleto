@@ -128,32 +128,38 @@ function iniciar_grabacion() {
   // unimos todos los trozos en un Blob, decidimos la extensión
   // según el MIME elegido y forzamos la descarga con un <a> invisible.
   recorder.onstop = () => {
-    // Si el MIME contiene "mp4", el archivo será .mp4; si no, .webm.
-    const ext  = mime_elegido.includes("mp4") ? "mp4" : "webm";
+  
+    // Extensión del archivo según el formato elegido:
+    // si el MIME contiene "mp4" → .mp4, si no → .webm
+    const ext = mime_elegido.includes("mp4") ? "mp4" : "webm";
 
-    // Blob = Binary Large Object. Une los trozos en un único
-    // bloque binario con el tipo MIME correcto.
+    // Unir todos los trozos grabados en un único Blob binario
+    // con el tipo MIME correspondiente
     const blob = new Blob(trozos, { type: mime_elegido || "video/webm" });
 
-    // Truco de descarga automática:
-    //   - Creamos un <a> no insertado en el DOM.
-    //   - Le damos un ObjectURL que apunta al Blob en memoria.
-    //   - Le ponemos el nombre de archivo deseado en `download`.
-    //   - Simulamos un clic para que el navegador descargue.
+    // Crear un <a> invisible para forzar la descarga automática
     const a = document.createElement("a");
+
+    // Apuntar el enlace al Blob en memoria
     a.href = URL.createObjectURL(blob);
+
+    // Nombre del archivo descargado
     a.download = "creditos_terminal." + ext;
+
+    // Simular el clic para que el navegador descargue
     a.click();
 
-    // Restauramos el estado de los botones (Parar → desactivado,
-    // Grabar → activo) y avisamos al usuario del resultado.
+    // Restaurar el estado de los botones (Rec activo, Stop desactivado)
     actualizar_botones();
+
+    // Mostrar mensaje al usuario debajo de los botones (#estado)
     if ($estado) {
       $estado.textContent = ext === "mp4"
         ? "✔ Descargado creditos_terminal.mp4"
         : "✔ Descargado .webm (conviértelo con HandBrake o ffmpeg)";
     }
-  };
+};
+
 
   // Reseteamos el contador de fotogramas para que la animación
   // empiece desde el principio exacto al iniciar la grabación.

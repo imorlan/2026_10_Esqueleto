@@ -3,22 +3,35 @@
   <head>
     <title>Créditos · Terminal fósforo verde</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.js"></script>
-    <!--  
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/addons/p5.sound.min.js"></script>
-    -->
     <link rel="stylesheet" type="text/css" href="style.css">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="utf-8" />
-
   </head>
   <body>
     <main>
-      <div id="lienzo"></div>         
-      <div id="barra">
-        <button id="btn_rec">● Rec</button>
-        <button id="btn_stop" disabled>■ Stop</button>
-        <button id="btn_reset">▶ On</button>
-        <span id="estado">Listo</span>
+      <div id="lienzo"></div>
+      <!-- Pantalla de selección de relación de aspecto (oculta al principio) -->
+      <div id="selector_aspecto">
+        <h1>Créditos · Terminal fósforo verde</h1>
+        <p>Elige la relación de aspecto del vídeo:</p>
+        <div class="grupo_aspecto">
+          <h2>Horizontal</h2>
+          <div class="opciones_aspecto" id="opciones_horizontal"></div>
+        </div>
+        <div class="grupo_aspecto">
+          <h2>Vertical</h2>
+          <div class="opciones_aspecto" id="opciones_vertical"></div>
+        </div>
+      </div>
+      <!-- Barra de controles (oculta hasta elegir aspecto) -->
+      <div id="barra" class="oculto">
+        <div class="fila_botones">
+          <button id="btn_rec">● Rec</button>
+          <button id="btn_stop" disabled>■ Stop</button>
+          <button id="btn_reset">▶ On</button>
+        </div>
+        <!-- MENSAJE DEBAJO DE LOS BOTONES -->
+        <div id="estado">Listo</div>
       </div>
     </main>
     <script src="constantes.js"></script>
@@ -28,6 +41,7 @@
     <script src="sketch.js"></script>
   </body>
 </html>
+
 
 
 
