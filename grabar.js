@@ -20,20 +20,6 @@
 // ============================================================
 
 
-// ------------------------------------------------------------
-//  VARIABLES GLOBALES DEL MÓDULO DE GRABACIÓN
-// ------------------------------------------------------------
-// Se declaran con `let` (no `const`) porque cambian durante la
-// grabación. Son globales para que sketch.js pueda consultarlas
-// (por ejemplo, `grabando` para saber si reiniciar la animación).
-// ------------------------------------------------------------
-
-let recorder     = null;  // Instancia activa de MediaRecorder (null si no se graba)
-let trozos       = [];    // Fragmentos de vídeo acumulados en cada ondataavailable
-let mime_elegido = "";    // MIME type elegido al iniciar (p. ej. "video/mp4" o "video/webm")
-let grabando     = false; // Bandera de estado: true mientras dura la grabación
-let activo       = false; // true = el scroll está en marcha
-
 
 // ------------------------------------------------------------
 //  SELECCIÓN DEL FORMATO DE VÍDEO
