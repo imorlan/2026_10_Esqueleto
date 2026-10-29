@@ -1,24 +1,30 @@
-/* style.css */
+/* ============================================================
+   style.css
+   Paleta neutra · sin efectos CRT · fondo de página negro
+   Canvas gris con marco blanco
+   ============================================================ */
 
 /* ---------- Variables ---------- */
 :root {
-  --fondo: #111;
-  --texto: #9fdfae;
+  --fondo:          #000000;   /* fondo de la página (negro) */
+  --fondo_panel:    #3a3a3a;   /* fondo del panel del selector */
+  --texto:          #e6e6e6;
+  --texto_suave:    #b8b8b8;
 
-  --verde: #33ff66;
-  --verde-fondo: #0b2a14;
-  --verde-hover: #12401f;
+  --btn:            #4a4a4a;
+  --btn_hover:      #5a5a5a;
+  --btn_borde:      #6a6a6a;
 
-  --rojo: #ff4d4d;
-  --rojo-fondo: #2a0b0b;
-  --rojo-hover: #401212;
+  --btn_rec:        #7a3a3a;
+  --btn_rec_hover:  #8a4a4a;
+  --btn_rec_borde:  #a05a5a;
 
-  --ambar: #ffb000;
-  --ambar-fondo: #2a1d05;
-  --ambar-hover: #40300a;
+  --btn_stop:       #6a4a3a;
+  --btn_stop_hover: #7a5a4a;
+  --btn_stop_borde: #8a6a5a;
 
   --espacio: 14px;
-  --radio: 4px;
+  --radio:   4px;
 }
 
 /* ---------- Base ---------- */
@@ -38,9 +44,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--fondo);
+  background: var(--fondo);            /* negro */
   color: var(--texto);
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 main {
@@ -57,117 +63,13 @@ main {
   display: block;
   max-width: 100%;
   height: auto;
-  box-shadow: 0 0 30px rgba(51, 255, 102, 0.15);
-}
-
-/* ---------- Barra de controles ---------- */
-#barra {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 12px;
-  font-size: 14px;
-}
-
-/* MODIFICACIÓN: el estado ya no va en la misma fila, va debajo */
-estado {
-  min-width: 0;
-  width: 100%;
-  text-align: center;
-  color: var(--texto);
-  font-size: 13px;
-  min-height: 1.4em;
-}
-.oculto {
-  display: none !important;
-}
-
-
-/* ---------- Botones ---------- */
-button {
-  padding: 8px 16px;
-  font: inherit;
-  color: var(--verde);
-  background: var(--verde-fondo);
-  border: 1px solid var(--verde);
+  background: #808080;                 /* gris de respaldo (draw() pinta encima) */
+  border: 2px solid #ffffff;           /* marco blanco */
   border-radius: var(--radio);
-  cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
 }
 
-button:hover:not(:disabled) {
-  background: var(--verde-hover);
-}
-
-button:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
-
-button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-/* Botón de parar (rojo) */
-#btn_stop {
-  color: var(--rojo);
-  background: var(--rojo-fondo);
-  border-color: var(--rojo);
-}
-
-#btn_stop:hover:not(:disabled) {
-  background: var(--rojo-hover);
-}
-
-/* Botón de reset (verde, el estilo base) */
-#btn_reset {
-  color: var(--verde);
-  background: var(--verde-fondo);
-  border-color: var(--verde);
-}
-
-#btn_reset:hover:not(:disabled) {
-  background: var(--verde-hover);
-}
-
-/* Botón On/Off: cuando está activo se ve relleno */
-#btn_reset.activo {
-  background: var(--verde-hover);
-  box-shadow: 0 0 10px rgba(51, 255, 102, 0.35);
-}
-
-/* Botón de grabar (ámbar) */
-#btn_rec {
-  color: var(--ambar);
-  background: var(--ambar-fondo);
-  border-color: var(--ambar);
-}
-
-#btn_rec:hover:not(:disabled) {
-  background: var(--ambar-hover);
-}
-
-/* Estado "grabando": parpadeo suave mientras graba */
-#btn_rec.grabando {
-  animation: pulso 1s ease-in-out infinite;
-}
-
-@keyframes pulso {
-  50% {
-    opacity: 0.5;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  #btn_rec.grabando {
-    animation: none;
-  }
-}
-
-/* - Selector de relación de aspecto - */
-selector_aspecto {
+/* ---------- Selector de aspecto ---------- */
+#selector_aspecto {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -175,53 +77,134 @@ selector_aspecto {
   padding: 20px;
   max-width: 900px;
   width: 100%;
+  background: var(--fondo_panel);
+  border-radius: var(--radio);
 }
-selector_aspecto h1 {
+
+#selector_aspecto h1 {
   font-size: 18px;
-  color: var(--verde);
   margin: 0;
-  text-shadow: 0 0 8px rgba(51, 255, 102, 0.5);
-}
-selector_aspecto h2 {
-  font-size: 14px;
-  color: var(--ambar);
-  margin: 0 0 8px 0;
-  border-bottom: 1px solid var(--ambar);
-  padding-bottom: 4px;
-}
-selector_aspecto p {
-  margin: 0;
+  font-weight: 600;
   color: var(--texto);
 }
+
+#selector_aspecto h2 {
+  font-size: 14px;
+  margin: 0 0 8px 0;
+  color: var(--texto_suave);
+  font-weight: 600;
+  border-bottom: 1px solid var(--btn_borde);
+  padding-bottom: 4px;
+}
+
+#selector_aspecto p {
+  margin: 0;
+  color: var(--texto_suave);
+}
+
 .grupo_aspecto {
   width: 100%;
 }
+
 .opciones_aspecto {
   display: grid;
   grid-template-columns: 1fr;
   gap: 8px;
 }
-.opciones_aspecto button {
-  text-align: left;
-  padding: 10px 14px;
-  font-size: 13px;
-}
+
 @media (min-width: 700px) {
   .opciones_aspecto {
     grid-template-columns: 1fr 1fr;
   }
 }
-/* - Barra de controles: mensaje debajo - */
-barra {
+
+/* ---------- Botones ---------- */
+button {
+  padding: 8px 16px;
+  font: inherit;
+  color: var(--texto);
+  background: var(--btn);
+  border: 1px solid var(--btn_borde);
+  border-radius: var(--radio);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+button:hover:not(:disabled) {
+  background: var(--btn_hover);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--texto);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Botones de la rejilla de opciones */
+.opciones_aspecto button {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 13px;
+}
+
+/* Botón Rec (rojo apagado) */
+#btn_rec {
+  color: #ffffff;
+  background: var(--btn_rec);
+  border-color: var(--btn_rec_borde);
+}
+
+#btn_rec:hover:not(:disabled) {
+  background: var(--btn_rec_hover);
+}
+
+/* Botón Stop (marrón apagado) */
+#btn_stop {
+  color: #ffffff;
+  background: var(--btn_stop);
+  border-color: var(--btn_stop_borde);
+}
+
+#btn_stop:hover:not(:disabled) {
+  background: var(--btn_stop_hover);
+}
+
+/* Botón On/Off: cuando está activo se ve más claro */
+#btn_reset.activo {
+  background: var(--btn_hover);
+}
+
+/* ---------- Barra de controles ---------- */
+#barra {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
   font-size: 14px;
 }
+
 .fila_botones {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 12px;
+}
+
+/* Mensaje de estado, siempre DEBAJO de los botones */
+#estado {
+  min-width: 0;
+  width: 100%;
+  min-height: 1.4em;
+  text-align: center;
+  color: var(--texto_suave);
+  font-size: 13px;
+}
+
+/* ---------- Utilidad ---------- */
+.oculto {
+  display: none !important;
 }

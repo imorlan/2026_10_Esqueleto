@@ -1,3 +1,5 @@
+/* Vacío */
+
 /*
 class Casilla {
   constructor(x, y, w, r, g, b){

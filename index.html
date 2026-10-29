@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
   <head>
-    <title>Créditos · Terminal fósforo verde</title>
+    <title>Esqueleto p5.js</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.js"></script>
     <link rel="stylesheet" type="text/css" href="style.css">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,30 +10,34 @@
   <body>
     <main>
       <div id="lienzo"></div>
-      <!-- Pantalla de selección de relación de aspecto (oculta al principio) -->
+
+      <!-- Pantalla de selección de relación de aspecto -->
       <div id="selector_aspecto">
-        <h1>Grabar en terminal</h1>
+        <h1>Esqueleto p5.js</h1>
         <p>Elige la relación de aspecto del vídeo:</p>
+
         <div class="grupo_aspecto">
           <h2>Horizontal</h2>
           <div class="opciones_aspecto" id="opciones_horizontal"></div>
         </div>
+
         <div class="grupo_aspecto">
           <h2>Vertical</h2>
           <div class="opciones_aspecto" id="opciones_vertical"></div>
         </div>
       </div>
-      <!-- Barra de controles (oculta hasta elegir aspecto) -->
+
+      <!-- Barra de controles -->
       <div id="barra" class="oculto">
         <div class="fila_botones">
           <button id="btn_rec">● Rec</button>
           <button id="btn_stop" disabled>■ Stop</button>
           <button id="btn_reset">▶ On</button>
         </div>
-        <!-- MENSAJE DEBAJO DE LOS BOTONES -->
         <div id="estado">Listo</div>
       </div>
     </main>
+
     <script src="globals.js"></script>
     <script src="clases.js"></script>
     <script src="funciones.js"></script>
@@ -41,7 +45,3 @@
     <script src="sketch.js"></script>
   </body>
 </html>
-
-
-
-
