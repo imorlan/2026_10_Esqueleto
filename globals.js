@@ -57,3 +57,20 @@ let   direccion_circulo  = 1;               // 1 → derecha, -1 → izquierda
 //  COLOR DE FONDO DEL CANVAS (gris neutro)
 // ------------------------------------------------------------
 const color_fondo = [128, 128, 128];
+
+
+// ------------------------------------------------------------
+//  Trazas de depuración en el canvas
+// ------------------------------------------------------------
+// Pon DEBUG = true para ver trazas en el canvas
+const DEBUG = false;
+
+/**
+ * Ejemplo
+ * 
+ *   if (DEBUG) {
+ *     textAlign(LEFT, TOP);
+ *     textSize(16);
+ *     text("draw()  activo=" + activo + "  f=" + f, 10, 10);
+ *   }
+ */
